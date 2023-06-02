@@ -4,6 +4,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 app.use(cors());
@@ -85,9 +86,9 @@ async function run() {
             res.send(result);
         });
 
-        app.delete('/menu/:id',verifyJwt,verifyAdmin, async(req, res) => {
+        app.delete('/menu/:id', verifyJwt, verifyAdmin, async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await menuCollection.deleteOne(query);
             res.send(result);
 
@@ -106,7 +107,7 @@ async function run() {
 
             const decodedEmail = req.decoded.email;
             if (email !== decodedEmail) {
-                return res.status(403).send({ error: true, message: 'porviden access' })
+                return res.status(403).send({ error: true, message: 'forbidden access' })
             };
 
             const query = { email: email };
@@ -164,6 +165,22 @@ async function run() {
             const query = { _id: new ObjectId(id) };
             const result = await cartCollection.deleteOne(query);
             res.send(result); ``
+        })
+
+        app.post('/create-payment-intent',verifyJwt, async (req, res) => {
+            const { price } = req.body;
+            console.log(price)
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+
         })
 
         await client.db("admin").command({ ping: 1 });
