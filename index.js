@@ -54,6 +54,7 @@ async function run() {
         const menuCollection = client.db("bristoDB").collection("menu");
         const reviewsCollection = client.db("bristoDB").collection("reviews");
         const cartCollection = client.db("bristoDB").collection("cart");
+        const paymentCollection = client.db("bristoDB").collection("payment");
 
         app.post('/jwt', (req, res) => {
             const user = req.body;
@@ -180,6 +181,19 @@ async function run() {
             res.send({
                 clientSecret: paymentIntent.client_secret
             })
+        })
+
+
+        app.post('/payments', verifyJwt, async (req, res) => {
+            const payment = req.body;
+            const insertResult = await paymentCollection.insertOne(payment);
+
+            const query = {
+                $in: payment.cartItems.map(id => new ObjectId(id))
+            }
+
+            const deleteResult = await cartCollection.deleteMany(query);
+            res.send({insertResult, deleteResult });
         })
 
         await client.db("admin").command({ ping: 1 });
